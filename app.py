@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Secrets se API key lena
+# Secrets se API key retrieval
 api_key = ""
 try:
     if "GEMINI_API_KEY" in st.secrets:
@@ -40,7 +40,7 @@ st.caption("Kuch bhi share karein—chahe ek single emotion ho, movie date ka sc
 
 user_prompt = st.text_area(
     "What's the vision?",
-    placeholder="E.g., me and my bf are spending time together...",
+    placeholder="me and my bf are spending time together watching rain from the balcony",
     height=120
 )
 
@@ -66,43 +66,47 @@ if st.button("Bring Scene to Life ✨"):
                     "top_p": 0.95,
                 }
                 
-                system_instruction = """
-                You are an intuitive, empathetic, and imaginative creative partner and cinematic director. 
-                Talk to the user like a real human collaborator—warm, engaged, vivid, and deeply perceptive.
+                # Active model dynamically dhundhna
+                available_models = [
+                    m.name for m in genai.list_models() 
+                    if 'generateContent' in m.supported_generation_methods
+                ]
                 
-                Rules for your response:
-                1. Never use cookie-cutter formulas or repetitive boilerplate phrasing.
-                2. First, genuinely connect with the vibe of what they wrote. Capture the emotional essence—the comfortable silence, warm glances, subtle body language, and shared comfort.
-                3. Paint the scene visually. Break down how this specific moment unfolds cinematically with vivid sensory details (ambient lighting, shot angles, depth of field, and ready-to-use visual generation prompts).
-                4. Always customize your response completely around the nuance of their specific words, giving every prompt its own distinct personality and heart.
-                """
-
-                # Model fallback chain (404 issue fix)
-                response = None
-                models_to_try = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"]
+                # Best available model select karna
+                chosen_model = None
+                preferred_order = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+                for pref in preferred_order:
+                    for m in available_models:
+                        if pref in m:
+                            chosen_model = m
+                            break
+                    if chosen_model:
+                        break
+                        
+                if not chosen_model and available_models:
+                    chosen_model = available_models[0]
+                    
+                model = genai.GenerativeModel(
+                    model_name=chosen_model,
+                    safety_settings=safety_settings,
+                    generation_config=generation_config,
+                    system_instruction="""
+                    You are an intuitive, empathetic, and imaginative creative partner and cinematic director. 
+                    Talk to the user like a real human collaborator—warm, engaged, vivid, and deeply perceptive.
+                    
+                    Rules:
+                    1. Never use cookie-cutter formulas or repetitive boilerplate phrasing.
+                    2. Genuinely connect with the vibe of what they wrote. Capture the emotional essence—the comfortable silence, warm glances, rain droplets on the railing, steam rising from cups.
+                    3. Paint the scene visually with fluid, rich sensory details (lighting, angles, depth of field, and ready-to-use visual generation prompts).
+                    4. Always customize your response completely around their specific words.
+                    """
+                )
                 
                 query = f"User Vision: {user_prompt}\nDesired Tone: {visual_tone}\nAspect Ratio: {aspect_ratio}"
-                
-                last_err = None
-                for m_name in models_to_try:
-                    try:
-                        model = genai.GenerativeModel(
-                            model_name=m_name,
-                            safety_settings=safety_settings,
-                            generation_config=generation_config,
-                            system_instruction=system_instruction
-                        )
-                        response = model.generate_content(query)
-                        if response and response.text:
-                            break
-                    except Exception as err:
-                        last_err = err
-                        continue
+                response = model.generate_content(query)
 
                 if response and response.text:
                     st.markdown(response.text)
-                elif last_err:
-                    st.error(f"Error: {last_err}")
                 else:
                     st.warning("Response generate nahi ho paya. Dobara try karein.")
                     
