@@ -8,18 +8,24 @@ st.set_page_config(
     layout="wide"
 )
 
+# Inbuilt API Key retrieval from Streamlit Secrets
+api_key = ""
+try:
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    api_key = ""
+
 # Sidebar setup
 with st.sidebar:
     st.title("🎬 FrameCraft AI")
     st.caption("AI Creative Partner & Shot Breakdown Engine")
     
-    # API key handling with automatic secrets fallback
-    api_key = st.text_input("Enter Gemini API Key", type="password")
+    # Agar secrets mein key set nahi hai tabhi input box show karega
     if not api_key:
-        try:
-            api_key = st.secrets.get("GEMINI_API_KEY", "")
-        except Exception:
-            api_key = ""
+        api_key = st.text_input("Enter Gemini API Key", type="password")
+    else:
+        st.success("API Connected ⚡")
             
     st.markdown("---")
     aspect_ratio = st.selectbox(
@@ -43,7 +49,7 @@ user_prompt = st.text_area(
 
 if st.button("Generate Breakdown 🚀"):
     if not api_key:
-        st.error("Please provide a Gemini API Key in the sidebar or via secrets.")
+        st.error("API Key not found. Please add GEMINI_API_KEY in Streamlit Secrets or sidebar.")
     elif not user_prompt.strip():
         st.warning("Please type an idea or scene description first.")
     else:
@@ -51,7 +57,6 @@ if st.button("Generate Breakdown 🚀"):
             try:
                 genai.configure(api_key=api_key)
                 
-                # Unblock creative, romantic, and casual scenes
                 safety_settings = {
                     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
